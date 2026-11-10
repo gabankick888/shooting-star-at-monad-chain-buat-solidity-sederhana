@@ -1,0 +1,77 @@
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract MonadShootingStar {
+
+    struct Player {
+        uint256 highScore;
+        uint256 totalGames;
+        uint256 totalStars;
+    }
+
+    mapping(address => Player) public players;
+
+    mapping(address => uint256) public gameStart;
+    mapping(address => bool) public isPlaying;
+
+    uint256 public constant GAME_DURATION = 30 seconds;
+    uint256 public constant MAX_SCORE = 10000;
+
+    event GameStarted(address indexed player);
+    event GameFinished(
+        address indexed player,
+        uint256 score
+    );
+
+    function startGame() external {
+        require(!isPlaying[msg.sender], "Already playing");
+
+        isPlaying[msg.sender] = true;
+        gameStart[msg.sender] = block.timestamp;
+
+        emit GameStarted(msg.sender);
+    }
+
+    function finishGame(uint256 score) external {
+        require(isPlaying[msg.sender], "No active game");
+
+        require(
+            block.timestamp >= gameStart[msg.sender] + GAME_DURATION,
+            "Game still running"
+        );
+
+        require(score <= MAX_SCORE, "Invalid score");
+
+        isPlaying[msg.sender] = false;
+
+        Player storage player = players[msg.sender];
+
+        player.totalGames++;
+        player.totalStars += score;
+
+        if (score > player.highScore) {
+            player.highScore = score;
+        }
+
+        emit GameFinished(msg.sender, score);
+    }
+
+    function getPlayerStats(address user)
+        external
+        view
+        returns (
+            uint256 highScore,
+            uint256 totalGames,
+            uint256 totalStars
+        )
+    {
+        Player memory p = players[user];
+
+        return (
+            p.highScore,
+            p.totalGames,
+            p.totalStars
+        );
+    }
+}
